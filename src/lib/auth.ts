@@ -2,9 +2,10 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { sendEmail } from "@/lib/email";
 import { betterAuth } from "better-auth";
-import { admin } from "better-auth/plugins";
+import { admin, organization } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { headers } from "next/headers";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -48,9 +49,28 @@ export const auth = betterAuth({
   },
   plugins: [
     nextCookies(),
+    organization(),
     admin({
       defaultRole: "user",
       adminRoles: ["admin"],
     }),
   ],
 });
+
+export async function getServerSession() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  return session;
+}
+
+export async function getCurrentUser() {
+  const session = await getServerSession();
+  return session?.user;
+}
+
+export async function getCurrentTenant() {
+  const session = await getServerSession();
+  // tenantId may not exist on the typed session object; cast to any to access dynamic tenant info
+  return (session as any)?.session?.tenantId;
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "email-and-password-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/emailAndPassword/SKILL.md",
+      "computedHash": "7786d722fa682b3d6a99793e73a9d51b59becefa595676134a993020633e068f"
+    },
+    "organization-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/organization/SKILL.md",
+      "computedHash": "f8ea75816a22992c1601c21c0ee3ff8209798065072d76aec3e31eea8295af57"
+    }
+  }
+}
