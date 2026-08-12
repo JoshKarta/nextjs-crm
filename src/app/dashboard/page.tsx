@@ -47,9 +47,9 @@ const DashboardPage = () => {
                 className="h-auto p-4 flex-col gap-2"
                 asChild
               >
-                <Link href="/auth/register">
+                <Link href="/dashboard/contacts">
                   <Users className="h-5 w-5" />
-                  <span>Create Account</span>
+                  <span>Contacts</span>
                 </Link>
               </Button>
               <Button
