@@ -51,6 +51,7 @@ import { ContactFormDialog } from "./contact-form-dialog";
 import { ContactDeleteDialog } from "./contact-delete-dialog";
 import { ContactRestoreDialog } from "./contact-restore-dialog";
 import { ContactDetailSheet } from "./contact-detail-sheet";
+import { cn } from "@/lib/utils";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -187,7 +188,7 @@ export function ContactsTable() {
         <div className="flex flex-wrap gap-2 items-center">
           {/* Search */}
           <div className="relative w-full sm:w-[220px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search name, email..."
               value={search}
@@ -301,7 +302,9 @@ export function ContactsTable() {
 
                     {/* Type */}
                     <TableCell className="px-4 py-3">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className={cn(contact.type==="INDIVIDUAL" ?
+                             "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-200 dark:border-purple-700"
+                           :   "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700")}>
                         {contact.type}
                       </Badge>
                     </TableCell>
@@ -336,15 +339,15 @@ export function ContactsTable() {
                     <TableCell className="px-4 py-3">
                       {isArchived ? (
                         <Badge
-                          variant="outline"
-                          className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1 w-fit text-xs"
+                          variant="destructive"
+                          // className="bg-red-50! text-red-700! border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800 flex items-center gap-1 w-fit text-xs"
                         >
                           <Archive className="h-3 w-3" /> Archived
                         </Badge>
                       ) : (
                         <Badge
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 w-fit text-xs"
+                          variant="default"
+                          className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800 flex items-center gap-1 w-fit text-xs"
                         >
                           <CheckCircle className="h-3 w-3" /> Active
                         </Badge>

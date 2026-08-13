@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +32,8 @@ import { TagInput } from "./tag-input";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { toast } from "react-hot-toast";
 import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { cn } from "@/lib/utils";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -113,7 +115,7 @@ export function ContactDetailSheet({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-6">
+        <SheetContent className="w-full! sm:max-w-3xl overflow-y-auto p-6 rounded-l-xl">
           <SheetHeader className="pb-4 border-b">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -131,8 +133,8 @@ export function ContactDetailSheet({
                   </Badge>
                   {contact?.status && (
                     <Badge
-                      variant={contact.status === "ACTIVE" ? "outline" : "destructive"}
-                      className="text-xs"
+                      variant={contact.status === "ACTIVE" ? "default" : "destructive"}
+                      className={cn(contact.status === "ACTIVE" ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800" : "","text-xs")}
                     >
                       {contact.status}
                     </Badge>
@@ -187,7 +189,7 @@ export function ContactDetailSheet({
 
                 {/* ADDRESSES TAB */}
                 <TabsContent value="addresses" className="space-y-4 pt-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mt-2">
                     <h4 className="text-sm font-medium">Contact Addresses</h4>
                     <Button
                       size="sm"
@@ -262,7 +264,7 @@ export function ContactDetailSheet({
 
                 {/* NOTES TAB */}
                 <TabsContent value="notes" className="space-y-4 pt-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mt-2">
                     <h4 className="text-sm font-medium">Contact Notes</h4>
                     <Button
                       size="sm"
@@ -322,7 +324,7 @@ export function ContactDetailSheet({
 
                 {/* TAGS TAB */}
                 <TabsContent value="tags" className="space-y-4 pt-4">
-                  <h4 className="text-sm font-medium">Manage Tags</h4>
+                  <h4 className="text-sm font-medium mt-2">Manage Tags</h4>
                   <TagInput
                     contactId={contact.id}
                     attachedTags={contact.contactTags || []}
