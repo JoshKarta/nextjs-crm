@@ -1,13 +1,9 @@
 import { db } from "@/db";
 import { contactNotes } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
+import { createNote } from "@/services/contact-service";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-
-const noteSchema = z.object({
-  content: z.string().min(1, "Note content cannot be empty"),
-});
 
 export async function GET(
   _req: NextRequest,
@@ -33,20 +29,15 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: contactId } = await params;
-  const body = await req.json();
-  const parsed = noteSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+
+  try {
+    const body = await req.json();
+    const note = await createNote(session.user.id, contactId, body);
+    return NextResponse.json({ note }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to create note" },
+      { status: 422 }
+    );
   }
-
-  const [note] = await db
-    .insert(contactNotes)
-    .values({
-      contactId,
-      content: parsed.data.content,
-      createdBy: session.user.id,
-    })
-    .returning();
-
-  return NextResponse.json({ note }, { status: 201 });
 }

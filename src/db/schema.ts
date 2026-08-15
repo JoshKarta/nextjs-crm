@@ -9,8 +9,56 @@ import {
   index,
   primaryKey,
   type AnyPgColumn,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
+
+
+// Kept intentionally generic so every future module (products, invoices,
+// payments) reuses this one table instead of growing its own audit table.
+export const auditEntityTypeEnum = pgEnum("audit_entity_type", [
+  "CONTACT",
+  "CONTACT_ADDRESS",
+  "CONTACT_NOTE",
+  "PRODUCT",
+  "INVOICE",
+  "PAYMENT",
+]);
+
+export const auditActionEnum = pgEnum("audit_action", [
+  "CREATE",
+  "UPDATE",
+  "ARCHIVE",
+  "RESTORE",
+  "DELETE",
+  "FINALIZE",
+  "VOID",
+]);
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityType: auditEntityTypeEnum("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    action: auditActionEnum("action").notNull(),
+    performedBy: text("performed_by")
+      .notNull()
+      .references(() => user.id),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
+    // Small, non-sensitive diff/context only (e.g. { "status": ["ACTIVE","ARCHIVED"] }).
+    // Never store full snapshots of PII here.
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  },
+  (table) => [
+    index("audit_events_entity_idx").on(table.entityType, table.entityId),
+    index("audit_events_performed_by_idx").on(table.performedBy),
+    index("audit_events_timestamp_idx").on(table.timestamp),
+  ]
+);
+
+export type AuditEvent = typeof auditEvents.$inferSelect;
+export type NewAuditEvent = typeof auditEvents.$inferInsert;
 
 export const contactTypeEnum = pgEnum("contact_type", [
   "INDIVIDUAL",

@@ -1,7 +1,5 @@
-import { db } from "@/db";
-import { contacts } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { restoreContact } from "@/services/contact-service";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
@@ -18,18 +16,14 @@ export async function PATCH(
 
   const { id } = await params;
 
-  const [updated] = await db
-    .update(contacts)
-    .set({
-      deletedAt: null,
-      status: "ACTIVE",
-      updatedBy: session.user.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(contacts.id, id))
-    .returning();
-
-  if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  return NextResponse.json({ contact: updated });
+  try {
+    const updated = await restoreContact(session.user.id, id);
+    return NextResponse.json({ contact: updated });
+  } catch (error: any) {
+    const status = error.message === "Contact not found" ? 404 : 422;
+    return NextResponse.json(
+      { error: error.message || "Failed to restore contact" },
+      { status }
+    );
+  }
 }

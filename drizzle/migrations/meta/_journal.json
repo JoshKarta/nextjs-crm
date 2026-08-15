@@ -8,6 +8,13 @@
       "when": 1786565605378,
       "tag": "0000_wise_miracleman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786668032334,
+      "tag": "0001_curvy_red_hulk",
+      "breakpoints": true
     }
   ]
 }

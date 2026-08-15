@@ -1,20 +1,6 @@
-import { db } from "@/db";
-import { contactAddresses } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
-import { and, eq } from "drizzle-orm";
+import { updateAddress, deleteAddress } from "@/services/contact-service";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-
-const updateAddressSchema = z.object({
-  type: z.enum(["BILLING", "SHIPPING", "OFFICE", "HOME", "OTHER"]).optional(),
-  line1: z.string().min(1, "Line 1 is required").optional(),
-  line2: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  state: z.string().optional().nullable(),
-  postalCode: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
-  isPrimary: z.boolean().optional(),
-});
 
 export async function PATCH(
   req: NextRequest,
@@ -24,44 +10,18 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: contactId, addressId } = await params;
-  const body = await req.json();
-  const parsed = updateAddressSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+
+  try {
+    const body = await req.json();
+    const address = await updateAddress(session.user.id, contactId, addressId, body);
+    return NextResponse.json({ address });
+  } catch (error: any) {
+    const status = error.message === "Address not found" ? 404 : 422;
+    return NextResponse.json(
+      { error: error.message || "Failed to update address" },
+      { status }
+    );
   }
-
-  const data = parsed.data;
-
-  // If set to primary, unset others of same type
-  if (data.isPrimary && data.type) {
-    await db
-      .update(contactAddresses)
-      .set({ isPrimary: false })
-      .where(
-        and(
-          eq(contactAddresses.contactId, contactId),
-          eq(contactAddresses.type, data.type)
-        )
-      );
-  }
-
-  const [address] = await db
-    .update(contactAddresses)
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(contactAddresses.id, addressId),
-        eq(contactAddresses.contactId, contactId)
-      )
-    )
-    .returning();
-
-  if (!address) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  return NextResponse.json({ address });
 }
 
 export async function DELETE(
@@ -73,17 +33,14 @@ export async function DELETE(
 
   const { id: contactId, addressId } = await params;
 
-  const [deleted] = await db
-    .delete(contactAddresses)
-    .where(
-      and(
-        eq(contactAddresses.id, addressId),
-        eq(contactAddresses.contactId, contactId)
-      )
-    )
-    .returning();
-
-  if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  return NextResponse.json({ success: true });
+  try {
+    await deleteAddress(session.user.id, contactId, addressId);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    const status = error.message === "Address not found" ? 404 : 422;
+    return NextResponse.json(
+      { error: error.message || "Failed to delete address" },
+      { status }
+    );
+  }
 }
