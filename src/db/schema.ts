@@ -10,9 +10,110 @@ import {
   primaryKey,
   type AnyPgColumn,
   jsonb,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
+
+export const productTypeEnum = pgEnum("product_type", ["PRODUCT", "SERVICE"]);
+export const productStatusEnum = pgEnum("product_status", ["ACTIVE", "INACTIVE", "ARCHIVED"]);
+
+// ---------------------------------------------------------------------------
+// product_categories
+//
+// v1 enforces a single level (a category with a parent cannot itself have
+// children — validated in the service layer, not the DB, since a CHECK
+// constraint can't see sibling rows). The self-referencing FK is kept in the
+// schema now specifically so a future move to arbitrary nesting doesn't
+// require a migration, per PRD §8 ("schema should not prevent future
+// nesting").
+// ---------------------------------------------------------------------------
+export const productCategories = pgTable(
+  "product_categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    parentCategoryId: uuid("parent_category_id").references(
+      (): AnyPgColumn => productCategories.id,
+      { onDelete: "set null" }
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("product_categories_name_idx").on(table.name),
+    index("product_categories_parent_id_idx").on(table.parentCategoryId),
+  ]
+);
+
+export const productCategoriesRelations = relations(productCategories, ({ one, many }) => ({
+  parent: one(productCategories, {
+    fields: [productCategories.parentCategoryId],
+    references: [productCategories.id],
+    relationName: "category_children",
+  }),
+  children: many(productCategories, { relationName: "category_children" }),
+  products: many(products),
+}));
+
+// ---------------------------------------------------------------------------
+// products
+//
+// Money: NUMERIC, never float (PRD §8). basePrice uses precision(14,4) to
+// comfortably hold typical currency amounts with sub-cent rounding headroom
+// for tax/discount math done in the invoice phase. taxRate is stored as a
+// fraction (0.2000 = 20%), not a whole-number percentage — pick one
+// convention and keep invoices consistent with it.
+// ---------------------------------------------------------------------------
+export const products = pgTable(
+  "products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description"),
+    sku: text("sku").notNull(),
+    type: productTypeEnum("type").notNull(),
+    status: productStatusEnum("status").notNull().default("ACTIVE"),
+    defaultUnit: text("default_unit"),
+    basePrice: numeric("base_price", { precision: 14, scale: 4 }).notNull(),
+    currency: text("currency").notNull(),
+    taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
+    categoryId: uuid("category_id").references(() => productCategories.id, { onDelete: "set null" }),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id),
+
+    // Soft delete, mirrored by status = ARCHIVED (same pattern as contacts).
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    // SKU uniqueness enforced at the DB level, scoped to non-deleted
+    // products so an archived SKU can be reissued later (PRD §8/§11).
+    uniqueIndex("products_sku_active_idx").on(table.sku).where(sql`${table.deletedAt} is null`),
+    index("products_status_idx").on(table.status),
+    index("products_category_id_idx").on(table.categoryId),
+    index("products_name_idx").on(table.name),
+    index("products_deleted_at_idx").on(table.deletedAt),
+  ]
+);
+
+export const productsRelations = relations(products, ({ one }) => ({
+  category: one(productCategories, {
+    fields: [products.categoryId],
+    references: [productCategories.id],
+  }),
+}));
+
+export type ProductCategory = typeof productCategories.$inferSelect;
+export type NewProductCategory = typeof productCategories.$inferInsert;
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;
 
 // Kept intentionally generic so every future module (products, invoices,
 // payments) reuses this one table instead of growing its own audit table.
@@ -21,6 +122,7 @@ export const auditEntityTypeEnum = pgEnum("audit_entity_type", [
   "CONTACT_ADDRESS",
   "CONTACT_NOTE",
   "PRODUCT",
+  "PRODUCT_CATEGORY",
   "INVOICE",
   "PAYMENT",
 ]);
@@ -33,6 +135,9 @@ export const auditActionEnum = pgEnum("audit_action", [
   "DELETE",
   "FINALIZE",
   "VOID",
+    // Distinct from UPDATE per PRD §12: product price/tax changes must be
+  // individually auditable, not folded into a generic "something changed".
+  "PRICE_CHANGE",
 ]);
 
 export const auditEvents = pgTable(

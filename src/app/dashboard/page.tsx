@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Mail, Settings, Code } from "lucide-react";
+import { Shield, Users, Mail, Settings, Code, Package } from "lucide-react";
 import Link from "next/link";
 
 const DashboardPage = () => {
@@ -50,6 +50,16 @@ const DashboardPage = () => {
                 <Link href="/dashboard/contacts">
                   <Users className="h-5 w-5" />
                   <span>Contacts</span>
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex-col gap-2"
+                asChild
+              >
+                <Link href="/dashboard/products">
+                  <Package className="h-5 w-5" />
+                  <span>Products & Services</span>
                 </Link>
               </Button>
               <Button

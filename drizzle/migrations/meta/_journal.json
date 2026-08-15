@@ -15,6 +15,13 @@
       "when": 1786668032334,
       "tag": "0001_curvy_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786829056385,
+      "tag": "0002_aberrant_the_twelve",
+      "breakpoints": true
     }
   ]
 }

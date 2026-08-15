@@ -42,10 +42,20 @@ const Navbar = () => {
 
           {/* Navigation Links */}
           {session && (
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm">
                   Dashboard
+                </Button>
+              </Link>
+              <Link href="/dashboard/products">
+                <Button variant="ghost" size="sm">
+                  Products
+                </Button>
+              </Link>
+              <Link href="/dashboard/contacts">
+                <Button variant="ghost" size="sm">
+                  Contacts
                 </Button>
               </Link>
             </div>
