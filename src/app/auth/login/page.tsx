@@ -14,12 +14,12 @@ const LoginPage = () => {
           </div>
           Kairo Inc.
         </div>
-        <Card className="w-full">
+        <Card className="w-full rounded-2xl">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">Welcome back</CardTitle>
             <CardDescription>Log into your CRM account</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="flex flex-col gap-4 pb-4">
             <LoginForm />
             {/* <div className="flex items-center my-2">
               <div className="flex-1 h-px bg-muted-foreground/30" />
