@@ -58,6 +58,11 @@ const Navbar = () => {
                   Contacts
                 </Button>
               </Link>
+              <Link href="/dashboard/invoices">
+                <Button variant="ghost" size="sm">
+                  Invoices
+                </Button>
+              </Link>
             </div>
           )}
         </div>

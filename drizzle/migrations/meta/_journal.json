@@ -22,6 +22,13 @@
       "when": 1786829056385,
       "tag": "0002_aberrant_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786885094976,
+      "tag": "0003_ambitious_hercules",
+      "breakpoints": true
     }
   ]
 }

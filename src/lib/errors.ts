@@ -79,3 +79,10 @@ export class DuplicateSkuError extends DomainError {
 export function isDomainError(err: unknown): err is DomainError {
   return err instanceof DomainError;
 }
+
+export class InvalidInvoiceStateError extends DomainError {
+  constructor(message: string, details?: DomainErrorDetails) {
+    super("INVALID_INVOICE_STATE", message, details);
+    this.name = "InvalidInvoiceStateError";
+  }
+}

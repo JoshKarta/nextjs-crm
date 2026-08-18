@@ -11,9 +11,220 @@ import {
   type AnyPgColumn,
   jsonb,
   numeric,
+  pgSequence,
+  check,
+  integer,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
+// NOTE: this table is NOT part of the original PRD (which explicitly defers
+// "invoice PDF generation" and any visual layout concerns to a future
+// phase — see PRD §17). It exists because the drag-and-drop template
+// builder needs somewhere to persist what a person designs. Treat it as an
+// intentional, flagged scope addition rather than something implied by the
+// PRD text.
+//
+// `layout` stores the block tree the builder produces: block type,
+// position, size, and per-block config (e.g. which invoice fields a "Line
+// Items Table" block binds to). It is intentionally schemaless (jsonb)
+// because the block shape will keep evolving with the builder UI — forcing
+// it into relational columns now would mean a migration on every new block
+// type.
+export const invoiceTemplates = pgTable(
+  "invoice_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    layout: jsonb("layout").notNull().$type<InvoiceTemplateLayout>(),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id),
+  },
+  (table) => [
+    uniqueIndex("invoice_templates_name_idx").on(table.name),
+    // Only one default template at a time.
+    uniqueIndex("invoice_templates_single_default_idx").on(table.isDefault).where(sql`${table.isDefault} = true`),
+    index("invoice_templates_created_at_idx").on(table.createdAt),
+  ]
+);
+
+// Kept close to the schema (rather than only in the frontend) since the
+// server validates incoming layouts against this shape too.
+export interface InvoiceTemplateBlock {
+  id: string;
+  type:
+    | "logo"
+    | "company_info"
+    | "bill_to"
+    | "invoice_meta"
+    | "line_items_table"
+    | "totals"
+    | "notes"
+    | "terms"
+    | "text";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  config?: Record<string, unknown>;
+}
+
+export interface InvoiceTemplateLayout {
+  pageSize: "LETTER" | "A4";
+  blocks: InvoiceTemplateBlock[];
+}
+
+export type InvoiceTemplateRow = typeof invoiceTemplates.$inferSelect;
+export type NewInvoiceTemplateRow = typeof invoiceTemplates.$inferInsert;
+
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "DRAFT",
+  "FINALIZED",
+  "PARTIALLY_PAID",
+  "PAID",
+  "VOID",
+  // OVERDUE is intentionally NOT stored here — PRD §9 calls it out as
+  // "calculated dynamically". A finalized invoice past its dueDate with
+  // amountDue > 0 is overdue; deriving it at read time avoids a background
+  // job that has to re-scan every invoice nightly and avoids the stored
+  // status silently drifting from the actual due date.
+]);
+
+export const discountTypeEnum = pgEnum("discount_type", ["FIXED", "PERCENTAGE"]);
+
+// Backs concurrency-safe invoice numbering (PRD §9: "unique and generated in
+// a concurrency-safe manner"). Postgres sequences are atomic under
+// concurrent access without any application-level locking; gaps from rolled
+// back transactions are acceptable (uniqueness and monotonicity are the
+// actual requirements, not gap-free numbering).
+export const invoiceNumberSeq = pgSequence("invoice_number_seq", {
+  startWith: 1,
+  increment: 1,
+  minValue: 1,
+});
+
+// ---------------------------------------------------------------------------
+// invoices
+// ---------------------------------------------------------------------------
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Human-facing number, e.g. "INV-000123". Generated from
+    // invoiceNumberSeq in the service layer — see generateInvoiceNumber().
+    invoiceNumber: text("invoice_number").notNull(),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "restrict" }),
+    status: invoiceStatusEnum("status").notNull().default("DRAFT"),
+    invoiceDate: timestamp("invoice_date", { withTimezone: true }).notNull().defaultNow(),
+    dueDate: timestamp("due_date", { withTimezone: true }),
+    currency: text("currency").notNull(),
+    notes: text("notes"),
+    terms: text("terms"),
+
+    // All financial totals: NUMERIC only (PRD §6/§8), never float.
+    // Server-computed and re-derived on every mutating operation — never
+    // trust a client-supplied total (PRD §6).
+    subtotalAmount: numeric("subtotal_amount", { precision: 14, scale: 4 }).notNull().default("0"),
+    discountAmount: numeric("discount_amount", { precision: 14, scale: 4 }).notNull().default("0"),
+    taxAmount: numeric("tax_amount", { precision: 14, scale: 4 }).notNull().default("0"),
+    totalAmount: numeric("total_amount", { precision: 14, scale: 4 }).notNull().default("0"),
+    amountPaid: numeric("amount_paid", { precision: 14, scale: 4 }).notNull().default("0"),
+    amountDue: numeric("amount_due", { precision: 14, scale: 4 }).notNull().default("0"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    updatedBy: text("updated_by")
+      .notNull()
+      .references(() => user.id),
+  },
+  (table) => [
+    uniqueIndex("invoices_invoice_number_idx").on(table.invoiceNumber),
+    index("invoices_contact_id_idx").on(table.contactId),
+    index("invoices_status_idx").on(table.status),
+    index("invoices_invoice_date_idx").on(table.invoiceDate),
+    index("invoices_due_date_idx").on(table.dueDate),
+    check(
+      "invoices_amounts_non_negative",
+      sql`${table.subtotalAmount} >= 0 AND ${table.discountAmount} >= 0 AND ${table.taxAmount} >= 0 AND ${table.totalAmount} >= 0 AND ${table.amountPaid} >= 0 AND ${table.amountDue} >= 0`
+    ),
+  ]
+);
+
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  contact: one(contacts, { fields: [invoices.contactId], references: [contacts.id] }),
+  items: many(invoiceItems),
+}));
+
+// ---------------------------------------------------------------------------
+// invoice_items
+//
+// Snapshot semantics (PRD §6/§9): once finalized, an invoice's items must
+// stay reproducible even if the referenced product's name/price/tax later
+// change. That's why description/unitPrice/taxRate live directly on the
+// item instead of being joined from `products` at read time — productId is
+// only a soft reference for traceability, not the source of truth after
+// finalization.
+// ---------------------------------------------------------------------------
+export const invoiceItems = pgTable(
+  "invoice_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    // Nullable: custom line items aren't tied to the product catalog.
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+
+    description: text("description").notNull(),
+    quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(),
+    unitPrice: numeric("unit_price", { precision: 14, scale: 4 }).notNull(),
+
+    discountType: discountTypeEnum("discount_type"),
+    discountValue: numeric("discount_value", { precision: 14, scale: 4 }),
+    discountAmount: numeric("discount_amount", { precision: 14, scale: 4 }).notNull().default("0"),
+
+    taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull().default("0"),
+    taxAmount: numeric("tax_amount", { precision: 14, scale: 4 }).notNull().default("0"),
+
+    subtotalAmount: numeric("subtotal_amount", { precision: 14, scale: 4 }).notNull(),
+    totalAmount: numeric("total_amount", { precision: 14, scale: 4 }).notNull(),
+
+    // Explicit ordering for display/PDF rendering — insertion order alone
+    // isn't reliable once items are edited/reordered on a draft.
+    position: integer("position").notNull().default(0),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("invoice_items_invoice_id_idx").on(table.invoiceId),
+    index("invoice_items_product_id_idx").on(table.productId),
+    index("invoice_items_position_idx").on(table.invoiceId, table.position),
+    check("invoice_items_quantity_positive", sql`${table.quantity} > 0`),
+    check("invoice_items_amounts_non_negative", sql`${table.subtotalAmount} >= 0 AND ${table.totalAmount} >= 0 AND ${table.taxAmount} >= 0 AND ${table.discountAmount} >= 0`),
+  ]
+);
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, { fields: [invoiceItems.invoiceId], references: [invoices.id] }),
+  product: one(products, { fields: [invoiceItems.productId], references: [products.id] }),
+}));
+
+export type Invoice = typeof invoices.$inferSelect;
+export type NewInvoice = typeof invoices.$inferInsert;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type NewInvoiceItem = typeof invoiceItems.$inferInsert;
 
 export const productTypeEnum = pgEnum("product_type", ["PRODUCT", "SERVICE"]);
 export const productStatusEnum = pgEnum("product_status", ["ACTIVE", "INACTIVE", "ARCHIVED"]);

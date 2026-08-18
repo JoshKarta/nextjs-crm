@@ -23,7 +23,14 @@ export type Permission =
   | "product:update"
   | "product:archive"
   | "product:restore"
-  | "product:read";
+  | "product:read"
+  | "invoice:create"
+  | "invoice:update"
+  | "invoice:finalize"
+  | "invoice:void"
+  | "invoice:read"
+  | "invoice_template:manage"
+  | "invoice_template:read";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
@@ -37,8 +44,24 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "product:archive",
     "product:restore",
     "product:read",
+    "invoice:create",
+    "invoice:update",
+    "invoice:finalize",
+    "invoice:void",
+    "invoice:read",
+    "invoice_template:manage",
+    "invoice_template:read",
   ],
-  user: ["contact:create", "contact:update", "contact:read", "product:read"],
+  user: [
+    "contact:create",
+    "contact:update",
+    "contact:read",
+    "product:read",
+    "invoice:create",
+    "invoice:update",
+    "invoice:read",
+    "invoice_template:read",
+  ],
   // ACCOUNTING owns catalog/pricing in this model — adjust if your org draws
   // the line differently (e.g. a separate CATALOG role).
   // ACCOUNTING: [
@@ -48,6 +71,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   //   "product:archive",
   //   "product:restore",
   //   "product:read",
+  //   "invoice:create",
+  //   "invoice:update",
+  //   "invoice:finalize",
+  //   "invoice:void",
+  //   "invoice:read",
+  //   "invoice_template:manage",
+  //   "invoice_template:read",
   // ],
 };
 

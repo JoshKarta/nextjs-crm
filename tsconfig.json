@@ -34,7 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "src/components/inoices/invoice-template-builder.jsx"  ],
   "exclude": [
     "node_modules"
   ]
