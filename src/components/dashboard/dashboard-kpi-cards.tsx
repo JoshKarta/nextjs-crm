@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, type Variants } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,7 +12,6 @@ import {
   Package,
   ArrowUpRight,
   ArrowDownRight,
-  FileText,
 } from "lucide-react";
 
 interface KPIMetricsProps {
@@ -42,7 +42,7 @@ export function DashboardKPICards({ summary }: KPIMetricsProps) {
 
   const cards = [
     {
-      title: "Total Invoiced Revenue",
+      title: "Total Billed Revenue",
       value: formatCurrency(summary.totalRevenue),
       change: "+14.2%",
       isPositive: true,
@@ -53,11 +53,11 @@ export function DashboardKPICards({ summary }: KPIMetricsProps) {
       accentBorder: "border-l-4 border-l-blue-500",
     },
     {
-      title: "Cash Collected",
+      title: "Cash Realized",
       value: formatCurrency(summary.cashCollected),
       change: "+18.6%",
       isPositive: true,
-      subtext: `${Math.round((summary.cashCollected / (summary.totalRevenue || 1)) * 100)}% realization rate`,
+      subtext: `${Math.round((summary.cashCollected / (summary.totalRevenue || 1)) * 100)}% collection rate`,
       icon: Wallet,
       gradient: "from-emerald-500/10 via-teal-500/5 to-transparent",
       iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
@@ -104,56 +104,77 @@ export function DashboardKPICards({ summary }: KPIMetricsProps) {
     },
   ];
 
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+      },
+    },
+  };
+
+  const cardVariants: Variants = {
+    hidden: { opacity: 0, y: 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+  };
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+    >
       {cards.map((card, i) => {
         const IconComponent = card.icon;
         return (
-          <Card
-            key={i}
-            className={`relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 border bg-card/60 backdrop-blur ${card.accentBorder}`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} pointer-events-none`} />
-            <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {card.title}
-                </span>
-                <div className={`p-2 rounded-xl border ${card.iconBg}`}>
-                  <IconComponent className="h-4 w-4" />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <h3 className="text-2xl font-bold tracking-tight text-foreground">
-                    {card.value}
-                  </h3>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] px-1.5 py-0.5 font-semibold flex items-center gap-0.5 border ${
-                      card.isPositive
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
-                    }`}
-                  >
-                    {card.isPositive ? (
-                      <ArrowUpRight className="h-3 w-3" />
-                    ) : (
-                      <ArrowDownRight className="h-3 w-3" />
-                    )}
-                    {card.change}
-                  </Badge>
+          <motion.div key={i} variants={cardVariants} whileHover={{ y: -3, transition: { duration: 0.2 } }}>
+            <Card
+              className={`relative overflow-hidden transition-shadow duration-300 hover:shadow-lg border bg-card/60 backdrop-blur h-full ${card.accentBorder}`}
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} pointer-events-none`} />
+              <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {card.title}
+                  </span>
+                  <div className={`p-2 rounded-xl border ${card.iconBg}`}>
+                    <IconComponent className="h-4 w-4" />
+                  </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground mt-2 line-clamp-1">
-                  {card.subtext}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">
+                      {card.value}
+                    </h3>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] px-1.5 py-0.5 font-semibold flex items-center gap-0.5 border ${
+                        card.isPositive
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                      }`}
+                    >
+                      {card.isPositive ? (
+                        <ArrowUpRight className="h-3 w-3" />
+                      ) : (
+                        <ArrowDownRight className="h-3 w-3" />
+                      )}
+                      {card.change}
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-1">
+                    {card.subtext}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

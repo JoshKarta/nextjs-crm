@@ -11,8 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Users, Database, Palette } from "lucide-react";
 import Link from "next/link";
 import { Hero } from "@/components/ui/animated-hero";
+import { getServerSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const HomePage = () => {
+const HomePage = async () => {
   const features = [
     {
       icon: <Shield className="h-5 w-5" />,
@@ -70,6 +72,12 @@ const HomePage = () => {
     "React Hook Form",
     "Zod",
   ];
+
+   const session = await getServerSession();
+
+   if(!session){
+    redirect("/auth/login");
+   }
 
   return (
     <div className="min-h-screen bg-background">

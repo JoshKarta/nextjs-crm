@@ -1,27 +1,27 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import LoginForm from "@/components/auth/login-form";
-import { Card, CardContent } from "@/components/ui/card";
-import { GoogleIcon, GithubIcon } from "@/components/ui/icons";
-import { signInWithGithub, signInWithGoogle } from "@/lib/auth-client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GalleryVerticalEnd } from "lucide-react";
 
 const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-100">
       <div className="flex flex-col items-center w-full max-w-md gap-6">
-        <a href="#" className="flex items-center gap-2 self-center font-medium">
+        <div className="flex items-center gap-2 self-center font-medium">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <GalleryVerticalEnd className="size-4" />
           </div>
-          Zexa Better Auth
-        </a>
+          Kairo Inc.
+        </div>
         <Card className="w-full">
-          <CardContent className="flex flex-col gap-4 pt-6">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardDescription>Log into your CRM account</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             <LoginForm />
-            <div className="flex items-center my-2">
+            {/* <div className="flex items-center my-2">
               <div className="flex-1 h-px bg-muted-foreground/30" />
               <span className="mx-3 text-muted-foreground text-xs font-medium">
                 OR
@@ -56,7 +56,7 @@ const LoginPage = () => {
               >
                 Create an account
               </Link>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
       </div>
