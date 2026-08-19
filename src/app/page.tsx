@@ -73,11 +73,13 @@ const HomePage = async () => {
     "Zod",
   ];
 
-   const session = await getServerSession();
+  const session = await getServerSession();
 
-   if(!session){
+  if (!session) {
     redirect("/auth/login");
-   }
+  } else {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="min-h-screen bg-background">
